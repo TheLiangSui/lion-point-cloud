@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lion Point Cloud Effect</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+    color: #ccc;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+  .ambient-bg {
+    position: fixed;
+    inset: -20%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.34;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255, 235, 170, 0.14), transparent 48%),
+      radial-gradient(circle at 80% 70%, rgba(120, 170, 255, 0.11), transparent 48%),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.036) 0px, rgba(255, 255, 255, 0.036) 1px, transparent 1px, transparent 26px),
+      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0px, rgba(255, 255, 255, 0.03) 1px, transparent 1px, transparent 30px);
+    transform-origin: center;
+  }
+  canvas { display: block; }
+
+  .ui-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .axis-split {
+    position: absolute;
+    left: 7rem;
+    top: 7rem;
+    pointer-events: none;
+    opacity: 0.78;
+    width: 0;
+    height: 0;
+  }
+  .axis-split .h {
+    position: absolute;
+    left: -6rem;
+    top: 0;
+    width: min(66vw, 980px);
+    height: 1px;
+    background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.08) 2rem,
+      rgba(255, 255, 255, 0.34) 6rem,
+      rgba(255, 255, 255, 0.16) 16rem,
+      rgba(255, 255, 255, 0.05) 28rem,
+      rgba(255, 255, 255, 0) 100%);
+  }
+  .axis-split .v {
+    position: absolute;
+    left: 0;
+    top: -6rem;
+    width: 1px;
+    height: min(70vh, 820px);
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.08) 2rem,
+      rgba(255, 255, 255, 0.34) 6rem,
+      rgba(255, 255, 255, 0.16) 16rem,
+      rgba(255, 255, 255, 0.05) 28rem,
+      rgba(255, 255, 255, 0) 100%);
+  }
+  .axis-split.rb {
+    left: auto;
+    top: auto;
+    right: 7rem;
+    bottom: 7rem;
+  }
+  .axis-split.rb .h {
+    left: auto;
+    right: -6rem;
+    background: linear-gradient(270deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.08) 2rem,
+      rgba(255, 255, 255, 0.34) 6rem,
+      rgba(255, 255, 255, 0.16) 16rem,
+      rgba(255, 255, 255, 0.05) 28rem,
+      rgba(255, 255, 255, 0) 100%);
+  }
+  .axis-split.rb .v {
+    top: auto;
+    bottom: -6rem;
+    background: linear-gradient(0deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.08) 2rem,
+      rgba(255, 255, 255, 0.34) 6rem,
+      rgba(255, 255, 255, 0.16) 16rem,
+      rgba(255, 255, 255, 0.05) 28rem,
+      rgba(255, 255, 255, 0) 100%);
+  }
+
+  .nav {
+    position: absolute;
+    left: 9.6rem;
+    top: 2.7rem;
+    display: flex;
+    flex-direction: row;
+    gap: 0.55rem;
+    pointer-events: auto;
+    align-items: center;
+  }
+  .nav-item {
+    width: 2.35rem;
+    height: 1.85rem;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.03);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    clip-path: polygon(15% 0%, 100% 0%, 85% 100%, 0% 100%);
+  }
+  .nav-item:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.4);
+  }
+  .nav-item.active {
+    background: rgba(255,255,200,0.12);
+    border-color: rgba(255,255,150,0.6);
+    box-shadow: 0 0 12px rgba(255,255,150,0.15);
+  }
+  .nav-item .label {
+    font-size: 0.5rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    transition: color 0.3s;
+  }
+  .nav-item.active .label {
+    color: rgba(255,255,200,0.9);
+  }
+
+  .model-title {
+    position: absolute;
+    left: 3rem;
+    bottom: 3.5rem;
+    pointer-events: none;
+  }
+  .model-title .tag {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(255,255,200,0.4);
+    margin-bottom: 0.3rem;
+  }
+  .model-title .name {
+    font-size: 2rem;
+    font-weight: 200;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.7);
+    opacity: 0.82;
+  }
+
+  .hud-panel {
+    position: absolute;
+    right: 2.6rem;
+    top: 2.3rem;
+    min-width: 280px;
+    padding: 1rem 1.1rem;
+    pointer-events: auto;
+  }
+  .hud-section {
+    margin-bottom: 0.9rem;
+  }
+  .hud-section:last-child {
+    margin-bottom: 0;
+  }
+  .hud-k {
+    font-size: 0.62rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.42);
+    margin-bottom: 0.25rem;
+  }
+  .hud-big {
+    font-size: 2.15rem;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.82);
+    line-height: 1;
+  }
+  .hud-sub {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.48);
+    letter-spacing: 0.06em;
+    margin-top: 0.28rem;
+  }
+  .hud-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.4rem;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.52);
+  }
+  .hud-row + .hud-row {
+    border-top: 1px dashed rgba(255,255,255,0.14);
+    margin-top: 0.28rem;
+    padding-top: 0.28rem;
+  }
+  .hud-row .v {
+    color: rgba(255,255,225,0.88);
+    font-weight: 400;
+    letter-spacing: 0.05em;
+  }
+  .hud-size-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  .hud-size-row input[type="range"] {
+    -webkit-appearance: none;
+    width: 120px;
+    height: 2px;
+    background: rgba(255,255,255,0.16);
+    outline: none;
+    border-radius: 1px;
+  }
+  .hud-size-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: rgba(255,255,220,0.82);
+    cursor: pointer;
+  }
+  .hud-size-row input[type="range"]::-moz-range-thumb {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: rgba(255,255,220,0.82);
+    border: none;
+    cursor: pointer;
+  }
+  .hud-size-val {
+    min-width: 2rem;
+    text-align: right;
+  }
+  .pc-control-row {
+    display: flex;
+  }
+
+  .param-toggle {
+    position: absolute;
+    right: 2.6rem;
+    top: 0.9rem;
+    height: 1.9rem;
+    padding: 0 0.8rem;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,230,0.82);
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .param-toggle:hover {
+    background: rgba(255,255,255,0.09);
+  }
+  .param-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 18;
+  }
+  .param-drawer {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: min(360px, 88vw);
+    height: 100vh;
+    padding: 1.1rem 0.9rem;
+    background: rgba(8, 10, 18, 0.88);
+    border-left: 1px solid rgba(255,255,255,0.12);
+    transform: translateX(100%);
+    transition: transform 0.28s ease;
+    z-index: 19;
+    pointer-events: auto;
+  }
+  .param-drawer.open { transform: translateX(0); }
+  .param-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .param-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .param-title {
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.62);
+    text-transform: uppercase;
+  }
+  .param-close {
+    width: 1.8rem;
+    height: 1.8rem;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: transparent;
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+  }
+  .param-row {
+    margin-bottom: 0.9rem;
+  }
+  .param-row label {
+    display: block;
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.58);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+  }
+  .param-row .line {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .param-row .line input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: rgba(255,255,255,0.18);
+  }
+  .param-row .line input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,220,0.9);
+    cursor: pointer;
+  }
+  .param-row .line input[type="range"]::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,220,0.9);
+    cursor: pointer;
+  }
+  .param-row .line .val {
+    min-width: 2.3rem;
+    text-align: right;
+    font-size: 0.62rem;
+    color: rgba(255,255,225,0.88);
+  }
+
+  /* desktop: keep original HUD, drawer hidden */
+  .param-toggle,
+  .param-backdrop,
+  .param-drawer {
+    display: none;
+  }
+
+  .arrows {
+    position: absolute;
+    left: 3rem;
+    bottom: 8rem;
+    display: flex;
+    gap: 0.8rem;
+    pointer-events: auto;
+  }
+  .arrow-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.03);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: rgba(255,255,255,0.5);
+    font-size: 1rem;
+  }
+  .arrow-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.4);
+    color: rgba(255,255,255,0.9);
+  }
+
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(6, 8, 14, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.35s ease;
+  }
+  .loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .loading-card {
+    width: min(520px, 86vw);
+    padding: 1rem 1.1rem;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.03);
+  }
+  .loading-title {
+    font-size: 0.66rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.64);
+    margin-bottom: 0.55rem;
+  }
+  .loading-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.4rem;
+    gap: 1rem;
+  }
+  .loading-item {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.78);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .loading-percent {
+    font-size: 0.8rem;
+    color: rgba(255,255,220,0.9);
+  }
+  .loading-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.12);
+    overflow: hidden;
+  }
+  .loading-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(255,255,255,0.35), rgba(255,255,220,0.9));
+    transition: width 0.22s ease;
+  }
+
+  /* Mobile layout optimization */
+  @media (max-width: 900px) {
+    .axis-split,
+    .axis-split.rb {
+      display: none;
+    }
+
+    .nav {
+      left: 0.8rem;
+      right: 0.8rem;
+      top: 0.85rem;
+      gap: 0.45rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0.2rem;
+    }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav-item {
+      width: 2.7rem;
+      height: 2rem;
+      flex: 0 0 auto;
+    }
+    .nav-item .label {
+      font-size: 0.52rem;
+    }
+
+    .hud-panel {
+      left: 0.8rem;
+      right: 0.8rem;
+      top: auto;
+      bottom: 0.8rem;
+      min-width: 0;
+      padding: 0.7rem 0.75rem;
+      background: rgba(8, 10, 18, 0.42);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(3px);
+    }
+    .param-toggle {
+      display: block;
+      right: 0.8rem;
+      top: auto;
+      bottom: 0.8rem;
+      height: 2rem;
+      font-size: 0.56rem;
+      padding: 0 0.7rem;
+      z-index: 20;
+    }
+    .param-backdrop,
+    .param-drawer {
+      display: block;
+    }
+    .param-drawer {
+      right: 0;
+      left: 0;
+      top: auto;
+      bottom: 0;
+      width: 100vw;
+      height: 44vh;
+      border-left: none;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      transform: translateY(100%);
+    }
+    .param-drawer.open { transform: translateY(0); }
+
+    /* mobile: hide inline HUD, use drawer instead */
+    .hud-panel {
+      display: none;
+    }
+    .pc-control-row {
+      display: none;
+    }
+    .hud-section {
+      margin-bottom: 0.55rem;
+    }
+    .hud-k {
+      font-size: 0.56rem;
+      letter-spacing: 0.2em;
+      margin-bottom: 0.15rem;
+    }
+    .hud-big {
+      font-size: 1.45rem;
+    }
+    .hud-sub {
+      font-size: 0.68rem;
+      margin-top: 0.16rem;
+    }
+    .hud-row {
+      font-size: 0.62rem;
+      gap: 0.7rem;
+      line-height: 1.55;
+      letter-spacing: 0.09em;
+    }
+    .hud-size-row input[type="range"] {
+      width: 92px;
+      height: 3px;
+    }
+    .hud-size-row input[type="range"]::-webkit-slider-thumb {
+      width: 12px;
+      height: 12px;
+    }
+    .hud-size-row input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+    }
+
+    .model-title {
+      left: 0.9rem;
+      bottom: 6.8rem;
+    }
+    .model-title .tag {
+      font-size: 0.56rem;
+      letter-spacing: 0.18em;
+    }
+    .model-title .name {
+      font-size: 1.42rem;
+      letter-spacing: 0.08em;
+    }
+
+    .arrows {
+      left: auto;
+      right: 0.9rem;
+      bottom: 6.9rem;
+      gap: 0.55rem;
+    }
+    .arrow-btn {
+      width: 2.35rem;
+      height: 2.35rem;
+      font-size: 1rem;
+    }
+  }
+
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div class="ambient-bg" id="ambient-bg"></div>
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-card">
+    <div class="loading-title">Loading Assets</div>
+    <div class="loading-meta">
+      <div class="loading-item" id="loading-item">Preparing...</div>
+      <div class="loading-percent" id="loading-percent">0%</div>
+    </div>
+    <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+  </div>
+</div>
+
+<div class="ui-layer">
+  <div class="axis-split" aria-hidden="true">
+    <div class="h"></div>
+    <div class="v"></div>
+  </div>
+  <div class="axis-split rb" aria-hidden="true">
+    <div class="h"></div>
+    <div class="v"></div>
+  </div>
+  <button class="param-toggle" id="param-toggle-btn">Params</button>
+  <div class="nav" id="nav"></div>
+
+  <div class="arrows">
+    <div class="arrow-btn" id="prev-btn">◁</div>
+    <div class="arrow-btn" id="next-btn">▷</div>
+  </div>
+
+  <div class="model-title">
+    <div class="tag">E.P.S · MODEL</div>
+    <div class="name" id="model-name"></div>
+  </div>
+  <div class="hud-panel" id="hud-panel">
+    <div class="hud-section">
+      <div class="hud-k">Local Time</div>
+      <div class="hud-big" id="hud-time">--:--:--</div>
+      <div class="hud-sub" id="hud-date">----</div>
+    </div>
+    <div class="hud-section">
+      <div class="hud-k">Telemetry</div>
+      <div class="hud-row"><span>Yaw · Pitch</span><span class="v" id="hud-orbit">-</span></div>
+      <div class="hud-row"><span>Model</span><span class="v" id="hud-model">-</span></div>
+      <div class="hud-row"><span>Index</span><span class="v" id="hud-index">-</span></div>
+      <div class="hud-row pc-control-row">
+        <span>Point Size</span>
+        <span class="v hud-size-row">
+          <input type="range" id="pc-size-slider" min="0.5" max="10" step="0.1" value="4.5">
+          <span class="hud-size-val" id="pc-size-value">4.5</span>
+        </span>
+      </div>
+      <div class="hud-row pc-control-row">
+        <span>Rot Speed</span>
+        <span class="v hud-size-row">
+          <input type="range" id="pc-rot-slider" min="0" max="0.01" step="0.0001" value="0.005">
+          <span class="hud-size-val" id="pc-rot-value">0.0050</span>
+        </span>
+      </div>
+      <div class="hud-row pc-control-row">
+        <span>Grid Gain</span>
+        <span class="v hud-size-row">
+          <input type="range" id="pc-grid-slider" min="0" max="4" step="0.05" value="2">
+          <span class="hud-size-val" id="pc-grid-value">2.00</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="param-backdrop" id="param-backdrop"></div>
+<aside class="param-drawer" id="param-drawer" aria-hidden="true">
+  <div class="param-head">
+    <div class="param-title">Parameter Drawer</div>
+    <button class="param-close" id="param-close-btn">×</button>
+  </div>
+  <div class="param-row">
+    <label>Local Time</label>
+    <div class="line">
+      <span class="val" id="m-hud-time">--:--:--</span>
+      <span class="val" id="m-hud-date">----</span>
+    </div>
+  </div>
+  <div class="param-row">
+    <label>Telemetry</label>
+    <div class="line">
+      <span class="val" id="m-hud-orbit">-</span>
+      <span class="val" id="m-hud-model">-</span>
+      <span class="val" id="m-hud-index">-</span>
+    </div>
+  </div>
+  <div class="param-row">
+    <label>Point Size</label>
+    <div class="line">
+      <input type="range" id="hud-size-slider" min="0.5" max="10" step="0.1" value="4.5">
+      <span class="val" id="hud-size-value">4.5</span>
+    </div>
+  </div>
+  <div class="param-row">
+    <label>Rot Speed</label>
+    <div class="line">
+      <input type="range" id="hud-rot-slider" min="0" max="0.01" step="0.0001" value="0.005">
+      <span class="val" id="hud-rot-value">0.0050</span>
+    </div>
+  </div>
+  <div class="param-row">
+    <label>Grid Gain</label>
+    <div class="line">
+      <input type="range" id="hud-grid-slider" min="0" max="4" step="0.05" value="2">
+      <span class="val" id="hud-grid-value">2.00</span>
+    </div>
+  </div>
+</aside>
+
+<!-- 点云数据（由 ply2points.mjs 生成，经典 script，file:// 也能直接打开） -->
+<script src="lion_points.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.164.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ══════════════════════════════════════════
+//  CONFIG — 想调效果改这里
+// ══════════════════════════════════════════
+// 与参考站点一致：发散 / 聚拢分段时间与进度映射
+const SCATTER_OUT_MS    = 1000;         // 粒子散开阶段时长（毫秒）
+const SCATTER_IN_MS     = 1800;         // 粒子聚拢阶段时长（毫秒）
+const INIT_FLY_IN_MS    = 1800;         // 初始飞入动画时长（毫秒）
+const SCATTER_RADIUS    = [1200, 1600]; // 粒子散开距离 [最小, 最大]（相对模型归一化尺寸 400 等比放大）
+const POINT_SIZE_RANGE  = [1.0, 1.0];   // 单个粒子随机尺寸范围 [最小, 最大]
+const POINT_SIZE_SCALE  = 4.5;          // 全局粒子尺寸缩放倍数
+const CAMERA_DISTANCE   = 380;          // 相机到原点的距离
+const CAMERA_FADE_START = 1000;         // 远处粒子开始淡出的视距
+const CAMERA_FADE_DIST  = 4000;         // 淡出到 0 的视距
+const AUTO_ROTATION_SPEED = 0.005;      // 自动公转每帧角增量（弧度）
+const CAMERA_DRIFT_X    = 13.0;         // 画面微动：相机 X 轴偏移幅度
+const CAMERA_DRIFT_Y    = 8.5;          // 画面微动：相机 Y 轴偏移幅度
+const CAMERA_DRIFT_Z    = 6.5;          // 画面微动：相机 Z 轴偏移幅度
+const CAMERA_DRIFT_SPEED = 0.00045;     // 画面微动速度
+const LOOK_AT_OFFSET_Y  = 30;           // 轻微抬升观察点，让主体略靠下（被上横线“框住”）
+let ambientGridGain = 2.0;              // 背景网格明显程度（0~4）
+
+// ──────────────────────────────────────────
+// 0. 读取点云数据（lion_points.js → base64 的 Float32Array）
+// ──────────────────────────────────────────
+const LOAD_STEPS = 1;
+function setLoadingProgress(done, label = '') {
+  const p = Math.max(0, Math.min(1, done / LOAD_STEPS));
+  const percent = Math.round(p * 100);
+  const fillEl = document.getElementById('loading-fill');
+  const percentEl = document.getElementById('loading-percent');
+  const itemEl = document.getElementById('loading-item');
+  if (fillEl) fillEl.style.width = `${percent}%`;
+  if (percentEl) percentEl.textContent = `${percent}%`;
+  if (itemEl && label) itemEl.textContent = label;
+}
+
+function hideLoadingOverlay() {
+  const el = document.getElementById('loading-overlay');
+  if (!el) return;
+  if (el.parentNode) el.parentNode.removeChild(el);
+}
+
+function decodeLionPoints() {
+  const raw = window.LION_POINTS;
+  if (!raw || !raw.b64) throw new Error('未找到 window.LION_POINTS，请确认 lion_points.js 已生成并正确引入');
+  const bin = atob(raw.b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { count: raw.count, data: new Float32Array(bytes.buffer) };
+}
+
+setLoadingProgress(0, 'Preparing...');
+const lion = decodeLionPoints();
+setLoadingProgress(1, 'lion_pointcloud.ply');
+
+const POINT_COUNT = lion.count;   // 粒子总数（= PLY 顶点数）
+const models = [{ key: 'lion', name: 'LION', data: lion.data }];
+
+// ──────────────────────────────────────────
+// 1. Shaders — scatter / reform transition
+// ──────────────────────────────────────────
+const vertexShader = `
+  attribute vec3 posFrom;       // old model (or scattered for init)
+  attribute vec3 scatterPos;    // random far-away position
+  attribute vec3 pointData;     // x=size, y=delay(0~1), z=random
+
+  uniform float progress;       // 0→1: from→scatter→target（JS 侧按两段时长映射到 0~1）
+  uniform float cameraFadeDistance;
+  uniform float cameraFadeStart;
+  uniform float pointSizeScale;
+  // Glitch uniforms: each vec4 = (yStart, yEnd, xOffset, intensity)
+  uniform vec4 glitchEffects0;
+  uniform vec4 glitchEffects1;
+  uniform vec4 glitchEffects2;
+  uniform vec4 glitchEffects3;
+
+  varying float vAlpha;
+  varying vec3 vColor;
+  varying float vDistanceAlpha;
+
+  float easeIn(float t)  { return t * t * t; }
+  float easeOut(float t) { float u = 1.0 - t; return 1.0 - u * u * u; }
+
+  void main() {
+    float size = pointData.x;
+    float delay = pointData.y;
+
+    float stagger = 0.3;
+    float p = clamp((progress - delay * stagger) / (1.0 - stagger), 0.0, 1.0);
+
+    vec3 pos;
+    float alpha;
+
+    if (p <= 0.5) {
+      float t = easeIn(p * 2.0);
+      pos = mix(posFrom, scatterPos, t);
+      alpha = mix(0.7, 0.15, t);
+    } else {
+      float t = easeOut((p - 0.5) * 2.0);
+      pos = mix(scatterPos, position, t);
+      alpha = mix(0.15, 0.7, t);
+    }
+
+    float scatterAmount = 1.0 - abs(p - 0.5) * 2.0;
+    vColor = mix(vec3(0.75, 0.75, 0.75), vec3(1.0, 0.95, 0.5), scatterAmount * 0.5);
+
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    float viewZ = -mvPosition.z;
+    float distanceAlpha = 1.0 - clamp((viewZ - cameraFadeStart) / (cameraFadeDistance - cameraFadeStart), 0.0, 1.0);
+    vAlpha = alpha * distanceAlpha;
+    vDistanceAlpha = distanceAlpha;
+
+    gl_Position = projectionMatrix * mvPosition;
+    gl_PointSize = size * pointSizeScale * distanceAlpha + 1.0;
+
+    // Glitch: horizontal offset for screen-space bands
+    vec2 screenPos = gl_Position.xy / gl_Position.w;
+    float sy = screenPos.y * 0.5 + 0.5; // normalized 0..1
+    vec4 bands[4];
+    bands[0] = glitchEffects0;
+    bands[1] = glitchEffects1;
+    bands[2] = glitchEffects2;
+    bands[3] = glitchEffects3;
+    for (int j = 0; j < 4; j++) {
+      float yStart = bands[j].x;
+      float yEnd   = bands[j].y;
+      float xOff   = bands[j].z;
+      float inten  = bands[j].w;
+      if (inten > 0.0 && sy >= yStart && sy <= yEnd) {
+        gl_Position.x += xOff * inten * gl_Position.w;
+      }
+    }
+  }
+`;
+
+const fragmentShader = `
+  varying float vAlpha;
+  varying vec3 vColor;
+  varying float vDistanceAlpha;
+
+  uniform float coreRadius;
+  uniform float innerGlowStrength;
+  uniform float compressStrength;
+
+  void main() {
+    vec2 center = gl_PointCoord - vec2(0.5);
+    float dist = length(center);
+    if (dist > 0.5) discard;
+
+    float alpha = vAlpha;
+    if (dist > coreRadius * vDistanceAlpha) {
+      float fadeOut = smoothstep(0.5, coreRadius, dist);
+      float distanceFade = 1.0 - pow(dist / 0.5, 2.0);
+      alpha = vAlpha * fadeOut * distanceFade;
+    }
+
+    float innerGlow = 1.0 - smoothstep(0.0, coreRadius * 3.0, dist);
+    vec3 finalColor = vColor + vColor * innerGlow * innerGlowStrength;
+    vec3 compressed = finalColor / (finalColor + vec3(1.0));
+    finalColor = mix(finalColor, compressed, compressStrength);
+
+
+    gl_FragColor = vec4(finalColor, alpha);
+  }
+`;
+
+// ──────────────────────────────────────────
+// 2. Scene Setup
+// ──────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+camera.position.set(0, 0, CAMERA_DISTANCE);
+
+// ──────────────────────────────────────────
+// 3. Helpers
+// ──────────────────────────────────────────
+function generateScatterPositions(count) {
+  const arr = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = SCATTER_RADIUS[0] + Math.random() * (SCATTER_RADIUS[1] - SCATTER_RADIUS[0]);
+    arr[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+    arr[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    arr[i * 3 + 2] = r * Math.cos(phi);
+  }
+  return arr;
+}
+
+function buildPointData(count) {
+  const arr = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    arr[i * 3]     = POINT_SIZE_RANGE[0] + Math.random() * (POINT_SIZE_RANGE[1] - POINT_SIZE_RANGE[0]);  // size
+    arr[i * 3 + 1] = Math.random();               // delay (0~1)
+    arr[i * 3 + 2] = Math.random();               // random
+  }
+  return arr;
+}
+
+// ──────────────────────────────────────────
+// 4. Point Cloud
+// ──────────────────────────────────────────
+const group = new THREE.Group();
+scene.add(group);
+
+function getAdaptivePointSizeScale() {
+  // 用“物理像素短边”适配，尽量消除系统缩放/DPR导致的跨设备不一致
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const shortEdgePx = Math.min(window.innerWidth, window.innerHeight) * dpr;
+  const t = Math.max(0, Math.min(1, (shortEdgePx - 900) / (2400 - 900)));
+  // 物理分辨率越高，点越大；越低，点越小
+  const adaptive = 2.8 + (5.0 - 2.8) * t;
+  return Math.round(adaptive * 10) / 10;
+}
+
+const geometry = new THREE.BufferGeometry();
+const positions = new Float32Array(POINT_COUNT * 3);
+const posFrom   = new Float32Array(POINT_COUNT * 3);
+const scatterP  = generateScatterPositions(POINT_COUNT);
+const pData     = buildPointData(POINT_COUNT);
+
+geometry.setAttribute('position',   new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('posFrom',    new THREE.BufferAttribute(posFrom, 3));
+geometry.setAttribute('scatterPos', new THREE.BufferAttribute(scatterP, 3));
+geometry.setAttribute('pointData',  new THREE.BufferAttribute(pData, 3));
+
+const material = new THREE.ShaderMaterial({
+  vertexShader,
+  fragmentShader,
+  uniforms: {
+    progress:          { value: 1.0 },
+    cameraFadeDistance: { value: CAMERA_FADE_DIST },
+    cameraFadeStart:   { value: CAMERA_FADE_START },
+    pointSizeScale:    { value: POINT_SIZE_SCALE },
+    glitchEffects0:    { value: new THREE.Vector4(0,0,0,0) },
+    glitchEffects1:    { value: new THREE.Vector4(0,0,0,0) },
+    glitchEffects2:    { value: new THREE.Vector4(0,0,0,0) },
+    glitchEffects3:    { value: new THREE.Vector4(0,0,0,0) },
+    coreRadius:        { value: 0.08 },
+    innerGlowStrength: { value: 0.3 },
+    compressStrength:  { value: 0.5 },
+  },
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+
+const pointsMesh = new THREE.Points(geometry, material);
+group.add(pointsMesh);
+
+// ──────────────────────────────────────────
+// 5. Animation Helper
+// ──────────────────────────────────────────
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// 递增即取消所有未完成的 animateValue（避免与初始飞入 / 其它进度动画打架）
+let progressAnimGeneration = 0;
+function cancelProgressAnimations() {
+  progressAnimGeneration++;
+}
+
+function animateValue(from, to, duration, onUpdate, onComplete, delay = 0) {
+  const myGen = ++progressAnimGeneration;
+  const start = performance.now() + delay;
+  function tick() {
+    if (myGen !== progressAnimGeneration) return;
+    const now = performance.now();
+    if (now < start) { requestAnimationFrame(tick); return; }
+    const t = Math.min(1, (now - start) / duration);
+    onUpdate(from + (to - from) * easeInOutCubic(t));
+    if (t < 1) requestAnimationFrame(tick);
+    else if (onComplete) onComplete();
+  }
+  requestAnimationFrame(tick);
+}
+
+// ──────────────────────────────────────────
+// 6. Scatter / Reform Transition
+// ──────────────────────────────────────────
+let isSwitching = false;
+
+/** progress 0→1 的两段映射：0→0.5 散开，0.5→1 聚拢 */
+function runProgressAnimation() {
+  material.uniforms.progress.value = 0;
+  const totalMs = SCATTER_OUT_MS + SCATTER_IN_MS;
+  const midRatio = SCATTER_OUT_MS / totalMs;
+  return new Promise(resolve => {
+    const start = performance.now();
+    function tick() {
+      const t = Math.min(1, (performance.now() - start) / totalMs);
+      let p;
+      if (t < midRatio) {
+        const st = t / midRatio;
+        p = st * st * 0.5;
+      } else {
+        const st = (t - midRatio) / (1 - midRatio);
+        p = 0.5 + (1 - (1 - st) * (1 - st)) * 0.5;
+      }
+      material.uniforms.progress.value = p;
+      if (t < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+/** 重播一次「散开 → 聚拢」转场（单模型下用它看效果） */
+async function replayTransition() {
+  if (isSwitching) return;
+  cancelProgressAnimations();
+  isSwitching = true;
+  stopGlitchLoop();
+
+  const posAttr = geometry.getAttribute('position');
+  const fromAttr = geometry.getAttribute('posFrom');
+  fromAttr.array.set(posAttr.array);
+  fromAttr.needsUpdate = true;
+
+  const scatterAttr = geometry.getAttribute('scatterPos');
+  scatterAttr.array.set(generateScatterPositions(POINT_COUNT));
+  scatterAttr.needsUpdate = true;
+
+  const pdAttr = geometry.getAttribute('pointData');
+  pdAttr.array.set(buildPointData(POINT_COUNT));
+  pdAttr.needsUpdate = true;
+
+  // 散开期间转速短暂拉高，聚拢时回落
+  const oldSpeed = autoRotationSpeed;
+  animateValue(oldSpeed, oldSpeed * 8, 300, v => { autoRotationSpeed = v; });
+  setTimeout(() => {
+    animateValue(autoRotationSpeed, oldSpeed, 1000, v => { autoRotationSpeed = v; });
+  }, 1500);
+
+  await runProgressAnimation();
+  isSwitching = false;
+  triggerGlitchOnce();
+}
+
+// ──────────────────────────────────────────
+// 6b. Glitch Effect (random horizontal band displacement)
+// ──────────────────────────────────────────
+let glitchTimer = null;
+
+function setGlitch(index, yStart, yEnd, xOffset, intensity) {
+  const key = 'glitchEffects' + index;
+  material.uniforms[key].value.set(yStart, yEnd, xOffset, intensity);
+}
+
+function clearAllGlitch() {
+  for (let i = 0; i < 4; i++) setGlitch(i, 0, 0, 0, 0);
+}
+
+function activateGlitch() {
+  const bandCount = 1 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < 4; i++) {
+    if (i < bandCount) {
+      const yStart = Math.random() * 0.8;
+      const bandH = 0.02 + Math.random() * 0.06;
+      const xOff = (Math.random() - 0.5) * 0.08;
+      setGlitch(i, yStart, yStart + bandH, xOff, 1.0);
+    } else {
+      setGlitch(i, 0, 0, 0, 0);
+    }
+  }
+  const duration = 40 + Math.random() * 80;
+  setTimeout(clearAllGlitch, duration);
+}
+
+function triggerGlitchOnce() {
+  stopGlitchLoop();
+  if (isSwitching) return;
+  activateGlitch();
+}
+
+function stopGlitchLoop() {
+  if (glitchTimer) { clearTimeout(glitchTimer); glitchTimer = null; }
+  clearAllGlitch();
+}
+
+function updateHudStatic() {
+  const modelText = models[0].key.toUpperCase();
+  const indexText = `1/${models.length}`;
+  const modelEl = document.getElementById('hud-model');
+  const indexEl = document.getElementById('hud-index');
+  const mModelEl = document.getElementById('m-hud-model');
+  const mIndexEl = document.getElementById('m-hud-index');
+  if (modelEl) modelEl.textContent = modelText;
+  if (indexEl) indexEl.textContent = indexText;
+  if (mModelEl) mModelEl.textContent = modelText;
+  if (mIndexEl) mIndexEl.textContent = indexText;
+}
+
+function updateHudDynamic() {
+  const now = new Date();
+  const isMobileLayout = window.innerWidth <= 900;
+  const timeEl = document.getElementById('hud-time');
+  const dateEl = document.getElementById('hud-date');
+  const orbitEl = document.getElementById('hud-orbit');
+  const mTimeEl = document.getElementById('m-hud-time');
+  const mDateEl = document.getElementById('m-hud-date');
+  const mOrbitEl = document.getElementById('m-hud-orbit');
+  const sizeEl = document.getElementById('pc-size-value');
+  const rotEl = document.getElementById('pc-rot-value');
+  const gridEl = document.getElementById('pc-grid-value');
+  const timeText = now.toLocaleTimeString('zh-CN', { hour12: false });
+  if (timeEl) timeEl.textContent = timeText;
+  if (mTimeEl) mTimeEl.textContent = timeText;
+  const dateText = isMobileLayout
+    ? now.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short' })
+    : now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  if (dateEl) {
+    dateEl.textContent = dateText;
+  }
+  if (mDateEl) mDateEl.textContent = dateText;
+  if (orbitEl) {
+    const yaw = ((currentTheta * 180 / Math.PI) % 360 + 360) % 360;
+    const pitch = currentPhi * 180 / Math.PI;
+    const orbitText = `${yaw.toFixed(0)}° · ${pitch.toFixed(0)}°`;
+    orbitEl.textContent = orbitText;
+    if (mOrbitEl) mOrbitEl.textContent = orbitText;
+  }
+  if (sizeEl) sizeEl.textContent = material.uniforms.pointSizeScale.value.toFixed(1);
+  if (rotEl) rotEl.textContent = autoRotationSpeed.toFixed(4);
+  if (gridEl) gridEl.textContent = ambientGridGain.toFixed(2);
+}
+
+// ──────────────────────────────────────────
+// 7. Orbit Camera Interaction (spherical coords)
+// ──────────────────────────────────────────
+let autoRotation = true;
+let autoRotationSpeed = AUTO_ROTATION_SPEED;
+let isDragging = false;
+let dragStartX = 0, dragStartY = 0;
+
+// Spherical: theta = horizontal angle, phi = vertical angle (clamped)
+let targetTheta = 0, targetPhi = Math.PI / 2;
+let currentTheta = 0, currentPhi = Math.PI / 2;
+const PHI_MIN = 0.15, PHI_MAX = Math.PI - 0.15;
+
+container.addEventListener('mousedown', e => {
+  isDragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  container.style.cursor = 'grabbing';
+});
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  targetTheta -= dx * 0.005;
+  targetPhi = Math.max(PHI_MIN, Math.min(PHI_MAX, targetPhi - dy * 0.005));
+});
+window.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = 'grab'; });
+
+container.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+  }
+});
+window.addEventListener('touchmove', e => {
+  if (!isDragging || e.touches.length !== 1) return;
+  const dx = e.touches[0].clientX - dragStartX, dy = e.touches[0].clientY - dragStartY;
+  dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+  targetTheta -= dx * 0.005;
+  targetPhi = Math.max(PHI_MIN, Math.min(PHI_MAX, targetPhi - dy * 0.005));
+});
+window.addEventListener('touchend', () => { isDragging = false; });
+container.style.cursor = 'grab';
+
+// Zoom: mouse wheel / trackpad
+const ZOOM_MIN = 150, ZOOM_MAX = 3000, ZOOM_SPEED = 0.1;
+let targetZoom = CAMERA_DISTANCE, currentZoom = CAMERA_DISTANCE;
+
+container.addEventListener('wheel', e => {
+  e.preventDefault();
+  targetZoom *= 1 + e.deltaY * ZOOM_SPEED * 0.01;
+  targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom));
+}, { passive: false });
+
+// Touch pinch zoom
+let lastPinchDist = 0;
+container.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastPinchDist = Math.sqrt(dx*dx + dy*dy);
+  }
+});
+container.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (lastPinchDist > 0) {
+      targetZoom *= lastPinchDist / dist;
+      targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom));
+    }
+    lastPinchDist = dist;
+  }
+});
+
+// ──────────────────────────────────────────
+// 8. Render Loop
+// ──────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  const bg = document.getElementById('ambient-bg');
+  if (bg) {
+    const t = performance.now() * 0.00012;
+    const tx = Math.sin(t) * 28;
+    const ty = Math.cos(t * 1.35) * 22;
+    const rot = Math.sin(t * 0.45) * 1.8;
+    const breathe = 0.25 + 0.17 * (Math.sin(t * 0.7) * 0.5 + 0.5);
+    const opacity = Math.max(0, Math.min(1, breathe * ambientGridGain));
+    bg.style.opacity = opacity.toFixed(3);
+    bg.style.transform = `translate(${tx}px, ${ty}px) rotate(${rot}deg) scale(1.03)`;
+  }
+  if (autoRotation && !isDragging) {
+    targetTheta += autoRotationSpeed;
+  }
+
+  currentTheta += (targetTheta - currentTheta) * 0.1;
+  currentPhi += (targetPhi - currentPhi) * 0.1;
+  currentZoom += (targetZoom - currentZoom) * 0.1;
+
+  // Spherical → Cartesian
+  camera.position.x = currentZoom * Math.sin(currentPhi) * Math.sin(currentTheta);
+  camera.position.y = currentZoom * Math.cos(currentPhi);
+  camera.position.z = currentZoom * Math.sin(currentPhi) * Math.cos(currentTheta);
+
+  // 画面微动：给镜头一个很小的漂移，避免长时间静止发呆
+  const driftT = performance.now() * CAMERA_DRIFT_SPEED;
+  camera.position.x += Math.sin(driftT) * CAMERA_DRIFT_X;
+  camera.position.y += Math.cos(driftT * 1.37) * CAMERA_DRIFT_Y;
+  camera.position.z += Math.sin(driftT * 0.93) * CAMERA_DRIFT_Z;
+  camera.lookAt(0, LOOK_AT_OFFSET_Y, 0);
+
+  updateHudDynamic();
+  renderer.render(scene, camera);
+}
+
+// ──────────────────────────────────────────
+// 9. Nav UI
+// ──────────────────────────────────────────
+const navEl = document.getElementById('nav');
+
+function buildNav() {
+  navEl.innerHTML = '';
+  models.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'nav-item active';
+    item.innerHTML = `<span class="label">${m.key.substring(0, 3).toUpperCase()}</span>`;
+    navEl.appendChild(item);
+  });
+}
+
+document.getElementById('prev-btn').addEventListener('click', replayTransition);
+document.getElementById('next-btn').addEventListener('click', replayTransition);
+
+// 参数滑杆
+const hudSizeSlider = document.getElementById('hud-size-slider');
+const hudSizeValueEl = document.getElementById('hud-size-value');
+const hudRotSlider = document.getElementById('hud-rot-slider');
+const hudRotValueEl = document.getElementById('hud-rot-value');
+const hudGridSlider = document.getElementById('hud-grid-slider');
+const hudGridValueEl = document.getElementById('hud-grid-value');
+const pcSizeSlider = document.getElementById('pc-size-slider');
+const pcSizeValueEl = document.getElementById('pc-size-value');
+const pcRotSlider = document.getElementById('pc-rot-slider');
+const pcRotValueEl = document.getElementById('pc-rot-value');
+const pcGridSlider = document.getElementById('pc-grid-slider');
+const pcGridValueEl = document.getElementById('pc-grid-value');
+const paramToggleBtn = document.getElementById('param-toggle-btn');
+const paramDrawer = document.getElementById('param-drawer');
+const paramBackdrop = document.getElementById('param-backdrop');
+const paramCloseBtn = document.getElementById('param-close-btn');
+
+function setParamDrawerOpen(open) {
+  paramDrawer.classList.toggle('open', open);
+  paramBackdrop.classList.toggle('open', open);
+  paramDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+paramToggleBtn.addEventListener('click', () => setParamDrawerOpen(true));
+paramCloseBtn.addEventListener('click', () => setParamDrawerOpen(false));
+paramBackdrop.addEventListener('click', () => setParamDrawerOpen(false));
+
+function applyPointSize(v) {
+  material.uniforms.pointSizeScale.value = v;
+  hudSizeSlider.value = v;
+  hudSizeValueEl.textContent = v.toFixed(1);
+  if (pcSizeSlider) pcSizeSlider.value = v;
+  if (pcSizeValueEl) pcSizeValueEl.textContent = v.toFixed(1);
+  updateHudDynamic();
+}
+
+function applyRotSpeed(v) {
+  autoRotationSpeed = v;
+  hudRotSlider.value = v;
+  hudRotValueEl.textContent = v.toFixed(4);
+  if (pcRotSlider) pcRotSlider.value = v;
+  if (pcRotValueEl) pcRotValueEl.textContent = v.toFixed(4);
+  updateHudDynamic();
+}
+
+function applyGridGain(v) {
+  ambientGridGain = v;
+  hudGridSlider.value = v;
+  hudGridValueEl.textContent = v.toFixed(2);
+  if (pcGridSlider) pcGridSlider.value = v;
+  if (pcGridValueEl) pcGridValueEl.textContent = v.toFixed(2);
+  updateHudDynamic();
+}
+applyPointSize(POINT_SIZE_SCALE);
+applyRotSpeed(AUTO_ROTATION_SPEED);
+applyGridGain(ambientGridGain);
+hudSizeSlider.addEventListener('input', () => applyPointSize(parseFloat(hudSizeSlider.value)));
+hudRotSlider.addEventListener('input', () => applyRotSpeed(parseFloat(hudRotSlider.value)));
+hudGridSlider.addEventListener('input', () => applyGridGain(parseFloat(hudGridSlider.value)));
+if (pcSizeSlider) pcSizeSlider.addEventListener('input', () => applyPointSize(parseFloat(pcSizeSlider.value)));
+if (pcRotSlider) pcRotSlider.addEventListener('input', () => applyRotSpeed(parseFloat(pcRotSlider.value)));
+if (pcGridSlider) pcGridSlider.addEventListener('input', () => applyGridGain(parseFloat(pcGridSlider.value)));
+
+// ──────────────────────────────────────────
+// 10. Resize
+// ──────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ──────────────────────────────────────────
+// 11. Init — 粒子飞入
+// ──────────────────────────────────────────
+(function init() {
+  hideLoadingOverlay();
+  buildNav();
+  updateHudStatic();
+  document.getElementById('model-name').textContent = models[0].name;
+
+  // 首次加载按分辨率自适应点大小，并同步到 HUD 滑条
+  applyPointSize(getAdaptivePointSizeScale());
+
+  const posAttr = geometry.getAttribute('position');
+  const fromAttr = geometry.getAttribute('posFrom');
+  const scatterAttr = geometry.getAttribute('scatterPos');
+  posAttr.array.set(models[0].data);
+  fromAttr.array.set(scatterAttr.array);
+  posAttr.needsUpdate = true;
+  fromAttr.needsUpdate = true;
+
+  material.uniforms.progress.value = 0.5;
+  animateValue(0.5, 1.0, INIT_FLY_IN_MS, v => {
+    material.uniforms.progress.value = v;
+  }, () => {
+    triggerGlitchOnce();
+  });
+
+  animate();
+})();
+
+</script>
+</body>
+</html>
