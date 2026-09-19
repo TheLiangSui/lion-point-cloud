@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Lion Point Cloud Effect</title>
+<title>Point Cloud Effect</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -715,6 +715,7 @@
 
 <!-- 点云数据（由 ply2points.mjs 生成，经典 script，file:// 也能直接打开） -->
 <script src="lion_points.js"></script>
+<script src="paifang_points.js"></script>
 
 <script type="importmap">
 {
@@ -748,9 +749,16 @@ const LOOK_AT_OFFSET_Y  = 30;           // 轻微抬升观察点，让主体略�
 let ambientGridGain = 2.0;              // 背景网格明显程度（0~4）
 
 // ──────────────────────────────────────────
-// 0. 读取点云数据（lion_points.js → base64 的 Float32Array）
+// 0. 读取点云数据（*_points.js → base64 的 Float32Array）
 // ──────────────────────────────────────────
-const LOAD_STEPS = 1;
+// key 必须与 ply2points.mjs 输出的文件名前缀一致
+const MODEL_LIST = [
+  { key: 'lion',    varName: 'LION_POINTS',    name: 'LION' },
+  { key: 'paifang', varName: 'PAIFANG_POINTS', name: 'PAIFANG' },
+];
+const LOAD_STEPS = MODEL_LIST.length;
+let loadDone = 0;
+
 function setLoadingProgress(done, label = '') {
   const p = Math.max(0, Math.min(1, done / LOAD_STEPS));
   const percent = Math.round(p * 100);
@@ -768,9 +776,8 @@ function hideLoadingOverlay() {
   if (el.parentNode) el.parentNode.removeChild(el);
 }
 
-function decodeLionPoints() {
-  const raw = window.LION_POINTS;
-  if (!raw || !raw.b64) throw new Error('未找到 window.LION_POINTS，请确认 lion_points.js 已生成并正确引入');
+function decodePoints(raw, key) {
+  if (!raw || !raw.b64) throw new Error(`未找到 window.${key}，请确认对应的 _points.js 已生成并正确引入`);
   const bin = atob(raw.b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -778,11 +785,20 @@ function decodeLionPoints() {
 }
 
 setLoadingProgress(0, 'Preparing...');
-const lion = decodeLionPoints();
-setLoadingProgress(1, 'lion_pointcloud.ply');
+const models = MODEL_LIST.map(m => {
+  const decoded = decodePoints(window[m.varName], m.varName);
+  loadDone++;
+  setLoadingProgress(loadDone, m.name.toLowerCase() + '_pointcloud.ply');
+  return { key: m.key, name: m.name, data: decoded.data, count: decoded.count };
+});
 
-const POINT_COUNT = lion.count;   // 粒子总数（= PLY 顶点数）
-const models = [{ key: 'lion', name: 'LION', data: lion.data }];
+// 所有模型共用同一套 geometry，点数必须一致（由 ply2points.mjs 统一）
+const POINT_COUNT = models[0].count;
+for (const m of models) {
+  if (m.count !== POINT_COUNT) {
+    throw new Error(`模型点数不一致：${m.key}=${m.count}，期望 ${POINT_COUNT}。请重新运行 ply2points.mjs 统一重采样`);
+  }
+}
 
 // ──────────────────────────────────────────
 // 1. Shaders — scatter / reform transition
@@ -1011,15 +1027,17 @@ function animateValue(from, to, duration, onUpdate, onComplete, delay = 0) {
 }
 
 // ──────────────────────────────────────────
-// 6. Scatter / Reform Transition
+// 6. Model Switching (scatter / reform)
 // ──────────────────────────────────────────
+let currentModelIndex = 0;
 let isSwitching = false;
 
-/** progress 0→1 的两段映射：0→0.5 散开，0.5→1 聚拢 */
-function runProgressAnimation() {
+/** progress 0→1 的两段映射：0→0.5 散开，0.5→1 聚拢；越过 0.5 时回调 onReform */
+function runProgressAnimation(onReform) {
   material.uniforms.progress.value = 0;
   const totalMs = SCATTER_OUT_MS + SCATTER_IN_MS;
   const midRatio = SCATTER_OUT_MS / totalMs;
+  let reformFired = false;
   return new Promise(resolve => {
     const start = performance.now();
     function tick() {
@@ -1033,6 +1051,11 @@ function runProgressAnimation() {
         p = 0.5 + (1 - (1 - st) * (1 - st)) * 0.5;
       }
       material.uniforms.progress.value = p;
+      // 进入聚拢阶段即更新 UI，而不是等完整切换结束
+      if (!reformFired && p >= 0.5) {
+        reformFired = true;
+        if (onReform) onReform();
+      }
       if (t < 1) requestAnimationFrame(tick);
       else resolve();
     }
@@ -1040,18 +1063,25 @@ function runProgressAnimation() {
   });
 }
 
-/** 重播一次「散开 → 聚拢」转场（单模型下用它看效果） */
-async function replayTransition() {
-  if (isSwitching) return;
+async function switchToModel(index) {
+  if (isSwitching || index === currentModelIndex) return;
+  // 必须先取消初始飞入的 animateValue，否则后续帧仍会写 progress，与本次切换冲突（多帧闪屏）
   cancelProgressAnimations();
   isSwitching = true;
   stopGlitchLoop();
+  currentModelIndex = index;
+  const model = models[index];
 
+  // 把当前实际位置存为起点，再写入目标模型坐标
   const posAttr = geometry.getAttribute('position');
   const fromAttr = geometry.getAttribute('posFrom');
   fromAttr.array.set(posAttr.array);
   fromAttr.needsUpdate = true;
 
+  posAttr.array.set(model.data);
+  posAttr.needsUpdate = true;
+
+  // 重新生成散开目标与粒子参数，让每次转场形态都不同
   const scatterAttr = geometry.getAttribute('scatterPos');
   scatterAttr.array.set(generateScatterPositions(POINT_COUNT));
   scatterAttr.needsUpdate = true;
@@ -1067,7 +1097,12 @@ async function replayTransition() {
     animateValue(autoRotationSpeed, oldSpeed, 1000, v => { autoRotationSpeed = v; });
   }, 1500);
 
-  await runProgressAnimation();
+  await runProgressAnimation(() => {
+    updateNav();
+    animateModelTitle(model.name);
+    updateHudStatic();
+  });
+
   isSwitching = false;
   triggerGlitchOnce();
 }
@@ -1113,9 +1148,16 @@ function stopGlitchLoop() {
   clearAllGlitch();
 }
 
+function animateModelTitle(name) {
+  const el = document.getElementById('model-name');
+  if (!el) return;
+  el.textContent = name;
+}
+
 function updateHudStatic() {
-  const modelText = models[0].key.toUpperCase();
-  const indexText = `1/${models.length}`;
+  const m = models[currentModelIndex];
+  const modelText = m ? m.key.toUpperCase() : '-';
+  const indexText = `${currentModelIndex + 1}/${models.length}`;
   const modelEl = document.getElementById('hud-model');
   const indexEl = document.getElementById('hud-index');
   const mModelEl = document.getElementById('m-hud-model');
@@ -1282,16 +1324,27 @@ const navEl = document.getElementById('nav');
 
 function buildNav() {
   navEl.innerHTML = '';
-  models.forEach(m => {
+  models.forEach((m, i) => {
     const item = document.createElement('div');
-    item.className = 'nav-item active';
+    item.className = 'nav-item' + (i === 0 ? ' active' : '');
     item.innerHTML = `<span class="label">${m.key.substring(0, 3).toUpperCase()}</span>`;
+    item.addEventListener('click', () => switchToModel(i));
     navEl.appendChild(item);
   });
 }
 
-document.getElementById('prev-btn').addEventListener('click', replayTransition);
-document.getElementById('next-btn').addEventListener('click', replayTransition);
+function updateNav() {
+  navEl.querySelectorAll('.nav-item').forEach((item, i) => {
+    item.classList.toggle('active', i === currentModelIndex);
+  });
+}
+
+document.getElementById('prev-btn').addEventListener('click', () => {
+  switchToModel((currentModelIndex - 1 + models.length) % models.length);
+});
+document.getElementById('next-btn').addEventListener('click', () => {
+  switchToModel((currentModelIndex + 1) % models.length);
+});
 
 // 参数滑杆
 const hudSizeSlider = document.getElementById('hud-size-slider');
@@ -1372,8 +1425,9 @@ window.addEventListener('resize', () => {
 (function init() {
   hideLoadingOverlay();
   buildNav();
+  updateNav();
   updateHudStatic();
-  document.getElementById('model-name').textContent = models[0].name;
+  animateModelTitle(models[0].name);
 
   // 首次加载按分辨率自适应点大小，并同步到 HUD 滑条
   applyPointSize(getAdaptivePointSizeScale());
