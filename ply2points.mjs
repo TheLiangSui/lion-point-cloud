@@ -13,9 +13,11 @@ const SRC_DIR = 'G:/Users/u1521/Desktop/出版物设计/点云模型';
 const OUT_DIR = import.meta.dirname;
 
 // key（= 输出文件名前缀 / 页面里的 window 变量名）→ 源 .ply 文件
+// 顺序与 index.html 的 MODEL_LIST 保持一致（仅影响控制台输出顺序，不影响产物）
 const MODELS = [
-  { key: 'lion',    ply: 'lion_pointcloud.ply' },
-  { key: 'paifang', ply: 'paifang_pointcloud.ply' },
+  { key: 'paifang',  ply: 'paifang_pointcloud.ply' },
+  { key: 'lion',     ply: 'lion_pointcloud.ply' },
+  { key: 'papercut', ply: 'papercut_pointcloud.ply' },
 ];
 
 const MAX_POINTS = 57682; // 上限，对齐参考站点的粒子数

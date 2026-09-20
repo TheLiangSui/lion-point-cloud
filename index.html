@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Point Cloud Effect</title>
+<title>陈家祠点云 · 模型展示</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #0a0a0f;
     overflow: hidden;
-    font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
     color: #ccc;
     user-select: none;
     touch-action: manipulation;
@@ -117,7 +117,7 @@
     align-items: center;
   }
   .nav-item {
-    width: 2.35rem;
+    width: 2.7rem;
     height: 1.85rem;
     border: 1px solid rgba(255,255,255,0.15);
     background: rgba(255,255,255,0.03);
@@ -139,9 +139,8 @@
     box-shadow: 0 0 12px rgba(255,255,150,0.15);
   }
   .nav-item .label {
-    font-size: 0.5rem;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
     color: rgba(255,255,255,0.5);
     transition: color 0.3s;
   }
@@ -156,16 +155,17 @@
     pointer-events: none;
   }
   .model-title .tag {
-    font-size: 0.65rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
     color: rgba(255,255,200,0.4);
     margin-bottom: 0.3rem;
   }
   .model-title .name {
-    font-size: 2rem;
-    font-weight: 200;
-    letter-spacing: 0.15em;
+    /* 中文标题用宋体，呼应陈家祠的传统气质；字重与间距保持原有的克制感 */
+    font-family: 'Songti SC', 'STSong', 'SimSun', 'Noto Serif SC', serif;
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
     color: rgba(255,255,255,0.7);
     opacity: 0.82;
   }
@@ -185,9 +185,8 @@
     margin-bottom: 0;
   }
   .hud-k {
-    font-size: 0.62rem;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
     color: rgba(255,255,255,0.42);
     margin-bottom: 0.25rem;
   }
@@ -209,10 +208,9 @@
     justify-content: space-between;
     align-items: center;
     gap: 1.4rem;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     line-height: 1.7;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: 0.06em;
     color: rgba(255,255,255,0.52);
   }
   .hud-row + .hud-row {
@@ -271,9 +269,8 @@
     border: 1px solid rgba(255,255,255,0.16);
     background: rgba(255,255,255,0.04);
     color: rgba(255,255,230,0.82);
-    font-size: 0.58rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
     pointer-events: auto;
     cursor: pointer;
   }
@@ -315,10 +312,9 @@
     margin-bottom: 1rem;
   }
   .param-title {
-    font-size: 0.62rem;
-    letter-spacing: 0.22em;
+    font-size: 0.74rem;
+    letter-spacing: 0.14em;
     color: rgba(255,255,255,0.62);
-    text-transform: uppercase;
   }
   .param-close {
     width: 1.8rem;
@@ -333,11 +329,10 @@
   }
   .param-row label {
     display: block;
-    font-size: 0.62rem;
+    font-size: 0.72rem;
     color: rgba(255,255,255,0.58);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     margin-bottom: 0.35rem;
-    text-transform: uppercase;
   }
   .param-row .line {
     display: flex;
@@ -369,7 +364,7 @@
   .param-row .line .val {
     min-width: 2.3rem;
     text-align: right;
-    font-size: 0.62rem;
+    font-size: 0.7rem;
     color: rgba(255,255,225,0.88);
   }
 
@@ -428,9 +423,8 @@
     background: rgba(255,255,255,0.03);
   }
   .loading-title {
-    font-size: 0.66rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
     color: rgba(255,255,255,0.64);
     margin-bottom: 0.55rem;
   }
@@ -442,7 +436,7 @@
     gap: 1rem;
   }
   .loading-item {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     color: rgba(255,255,255,0.78);
     white-space: nowrap;
     overflow: hidden;
@@ -489,7 +483,7 @@
       flex: 0 0 auto;
     }
     .nav-item .label {
-      font-size: 0.52rem;
+      font-size: 0.62rem;
     }
 
     .hud-panel {
@@ -509,7 +503,7 @@
       top: auto;
       bottom: 0.8rem;
       height: 2rem;
-      font-size: 0.56rem;
+      font-size: 0.68rem;
       padding: 0 0.7rem;
       z-index: 20;
     }
@@ -541,8 +535,8 @@
       margin-bottom: 0.55rem;
     }
     .hud-k {
-      font-size: 0.56rem;
-      letter-spacing: 0.2em;
+      font-size: 0.66rem;
+      letter-spacing: 0.12em;
       margin-bottom: 0.15rem;
     }
     .hud-big {
@@ -553,10 +547,10 @@
       margin-top: 0.16rem;
     }
     .hud-row {
-      font-size: 0.62rem;
+      font-size: 0.68rem;
       gap: 0.7rem;
       line-height: 1.55;
-      letter-spacing: 0.09em;
+      letter-spacing: 0.04em;
     }
     .hud-size-row input[type="range"] {
       width: 92px;
@@ -576,11 +570,11 @@
       bottom: 6.8rem;
     }
     .model-title .tag {
-      font-size: 0.56rem;
-      letter-spacing: 0.18em;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
     }
     .model-title .name {
-      font-size: 1.42rem;
+      font-size: 1.5rem;
       letter-spacing: 0.08em;
     }
 
@@ -604,9 +598,9 @@
 <div class="ambient-bg" id="ambient-bg"></div>
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-card">
-    <div class="loading-title">Loading Assets</div>
+    <div class="loading-title">正在载入资源</div>
     <div class="loading-meta">
-      <div class="loading-item" id="loading-item">Preparing...</div>
+      <div class="loading-item" id="loading-item">准备中…</div>
       <div class="loading-percent" id="loading-percent">0%</div>
     </div>
     <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
@@ -622,7 +616,7 @@
     <div class="h"></div>
     <div class="v"></div>
   </div>
-  <button class="param-toggle" id="param-toggle-btn">Params</button>
+  <button class="param-toggle" id="param-toggle-btn">参数</button>
   <div class="nav" id="nav"></div>
 
   <div class="arrows">
@@ -631,36 +625,36 @@
   </div>
 
   <div class="model-title">
-    <div class="tag">E.P.S · MODEL</div>
+    <div class="tag">点云 · 模型</div>
     <div class="name" id="model-name"></div>
   </div>
   <div class="hud-panel" id="hud-panel">
     <div class="hud-section">
-      <div class="hud-k">Local Time</div>
+      <div class="hud-k">本地时间</div>
       <div class="hud-big" id="hud-time">--:--:--</div>
       <div class="hud-sub" id="hud-date">----</div>
     </div>
     <div class="hud-section">
-      <div class="hud-k">Telemetry</div>
-      <div class="hud-row"><span>Yaw · Pitch</span><span class="v" id="hud-orbit">-</span></div>
-      <div class="hud-row"><span>Model</span><span class="v" id="hud-model">-</span></div>
-      <div class="hud-row"><span>Index</span><span class="v" id="hud-index">-</span></div>
+      <div class="hud-k">遥测数据</div>
+      <div class="hud-row"><span>水平 · 俯仰</span><span class="v" id="hud-orbit">-</span></div>
+      <div class="hud-row"><span>模型</span><span class="v" id="hud-model">-</span></div>
+      <div class="hud-row"><span>序号</span><span class="v" id="hud-index">-</span></div>
       <div class="hud-row pc-control-row">
-        <span>Point Size</span>
+        <span>粒子大小</span>
         <span class="v hud-size-row">
           <input type="range" id="pc-size-slider" min="0.5" max="10" step="0.1" value="4.5">
           <span class="hud-size-val" id="pc-size-value">4.5</span>
         </span>
       </div>
       <div class="hud-row pc-control-row">
-        <span>Rot Speed</span>
+        <span>旋转速度</span>
         <span class="v hud-size-row">
           <input type="range" id="pc-rot-slider" min="0" max="0.01" step="0.0001" value="0.005">
           <span class="hud-size-val" id="pc-rot-value">0.0050</span>
         </span>
       </div>
       <div class="hud-row pc-control-row">
-        <span>Grid Gain</span>
+        <span>网格强度</span>
         <span class="v hud-size-row">
           <input type="range" id="pc-grid-slider" min="0" max="4" step="0.05" value="2">
           <span class="hud-size-val" id="pc-grid-value">2.00</span>
@@ -672,18 +666,18 @@
 <div class="param-backdrop" id="param-backdrop"></div>
 <aside class="param-drawer" id="param-drawer" aria-hidden="true">
   <div class="param-head">
-    <div class="param-title">Parameter Drawer</div>
+    <div class="param-title">参数面板</div>
     <button class="param-close" id="param-close-btn">×</button>
   </div>
   <div class="param-row">
-    <label>Local Time</label>
+    <label>本地时间</label>
     <div class="line">
       <span class="val" id="m-hud-time">--:--:--</span>
       <span class="val" id="m-hud-date">----</span>
     </div>
   </div>
   <div class="param-row">
-    <label>Telemetry</label>
+    <label>遥测数据</label>
     <div class="line">
       <span class="val" id="m-hud-orbit">-</span>
       <span class="val" id="m-hud-model">-</span>
@@ -691,21 +685,21 @@
     </div>
   </div>
   <div class="param-row">
-    <label>Point Size</label>
+    <label>粒子大小</label>
     <div class="line">
       <input type="range" id="hud-size-slider" min="0.5" max="10" step="0.1" value="4.5">
       <span class="val" id="hud-size-value">4.5</span>
     </div>
   </div>
   <div class="param-row">
-    <label>Rot Speed</label>
+    <label>旋转速度</label>
     <div class="line">
       <input type="range" id="hud-rot-slider" min="0" max="0.01" step="0.0001" value="0.005">
       <span class="val" id="hud-rot-value">0.0050</span>
     </div>
   </div>
   <div class="param-row">
-    <label>Grid Gain</label>
+    <label>网格强度</label>
     <div class="line">
       <input type="range" id="hud-grid-slider" min="0" max="4" step="0.05" value="2">
       <span class="val" id="hud-grid-value">2.00</span>
@@ -716,6 +710,7 @@
 <!-- 点云数据（由 ply2points.mjs 生成，经典 script，file:// 也能直接打开） -->
 <script src="lion_points.js"></script>
 <script src="paifang_points.js"></script>
+<script src="papercut_points.js"></script>
 
 <script type="importmap">
 {
@@ -752,9 +747,11 @@ let ambientGridGain = 2.0;              // 背景网格明显程度（0~4）
 // 0. 读取点云数据（*_points.js → base64 的 Float32Array）
 // ──────────────────────────────────────────
 // key 必须与 ply2points.mjs 输出的文件名前缀一致
+// 数组顺序 = 展示顺序；short 用于 nav 与 HUD 的紧凑位置
 const MODEL_LIST = [
-  { key: 'lion',    varName: 'LION_POINTS',    name: 'LION' },
-  { key: 'paifang', varName: 'PAIFANG_POINTS', name: 'PAIFANG' },
+  { key: 'paifang',  varName: 'PAIFANG_POINTS',  name: '陈家祠牌坊', short: '牌坊' },
+  { key: 'lion',     varName: 'LION_POINTS',     name: '圣狮',       short: '圣狮' },
+  { key: 'papercut', varName: 'PAPERCUT_POINTS', name: '木雕屏门',   short: '屏门' },
 ];
 const LOAD_STEPS = MODEL_LIST.length;
 let loadDone = 0;
@@ -784,12 +781,12 @@ function decodePoints(raw, key) {
   return { count: raw.count, data: new Float32Array(bytes.buffer) };
 }
 
-setLoadingProgress(0, 'Preparing...');
+setLoadingProgress(0, '准备中…');
 const models = MODEL_LIST.map(m => {
   const decoded = decodePoints(window[m.varName], m.varName);
   loadDone++;
-  setLoadingProgress(loadDone, m.name.toLowerCase() + '_pointcloud.ply');
-  return { key: m.key, name: m.name, data: decoded.data, count: decoded.count };
+  setLoadingProgress(loadDone, m.name);
+  return { key: m.key, name: m.name, short: m.short, data: decoded.data, count: decoded.count };
 });
 
 // 所有模型共用同一套 geometry，点数必须一致（由 ply2points.mjs 统一）
@@ -1156,8 +1153,8 @@ function animateModelTitle(name) {
 
 function updateHudStatic() {
   const m = models[currentModelIndex];
-  const modelText = m ? m.key.toUpperCase() : '-';
-  const indexText = `${currentModelIndex + 1}/${models.length}`;
+  const modelText = m ? m.short : '-';
+  const indexText = `${currentModelIndex + 1} / ${models.length}`;
   const modelEl = document.getElementById('hud-model');
   const indexEl = document.getElementById('hud-index');
   const mModelEl = document.getElementById('m-hud-model');
@@ -1327,7 +1324,7 @@ function buildNav() {
   models.forEach((m, i) => {
     const item = document.createElement('div');
     item.className = 'nav-item' + (i === 0 ? ' active' : '');
-    item.innerHTML = `<span class="label">${m.key.substring(0, 3).toUpperCase()}</span>`;
+    item.innerHTML = `<span class="label">${m.short}</span>`;
     item.addEventListener('click', () => switchToModel(i));
     navEl.appendChild(item);
   });
